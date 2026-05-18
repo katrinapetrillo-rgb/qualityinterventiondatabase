@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quality Intervention Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f4f0;color:#1a1a18;font-size:14px}
+.page{max-width:1100px;margin:0 auto;padding:28px 20px}
+h1{font-size:19px;font-weight:500;margin-bottom:2px}
+.sub{font-size:12px;color:#999;margin-bottom:20px}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+.filters select,.filters input{font-size:13px;padding:6px 10px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#1a1a18}
+.filters input{min-width:180px;flex:1}
+button{font-size:13px;padding:6px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#1a1a18;cursor:pointer}
+button:hover{background:#f5f5f5}
+.btn-dark{background:#1a1a18;color:#fff;border-color:#1a1a18}
+.btn-dark:hover{background:#333}
+.btn-red{color:#991b1b;border-color:#fca5a5}
+.btn-red:hover{background:#fef2f2}
+.tbl-wrap{background:#fff;border:1px solid #e8e8e8;border-radius:12px;overflow-x:auto;margin-bottom:20px}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+th{font-size:11px;font-weight:500;color:#888;text-align:left;padding:9px 12px;border-bottom:1px solid #f0f0f0;cursor:pointer;white-space:nowrap}
+th:hover{color:#1a1a18}
+td{padding:9px 12px;border-bottom:1px solid #f8f8f8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr.row:hover td{background:#fafafa;cursor:pointer}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 9px;border-radius:20px;white-space:nowrap}
+.sg{background:#e8f5ee;color:#1a5c35}
+.sb{background:#e8f5ee;color:#166634}
+.so{background:#fef9ee;color:#92400e}
+.sng{background:#fff0e8;color:#9a3412}
+.sw{background:#fef2f2;color:#991b1b}
+.su{background:#fef2f2;color:#7f1d1d}
+.sia{background:#f0eeff;color:#4c1d95}
+.sc{background:#f5f5f5;color:#525252}
+.snew{background:#fff3e0;color:#e65100}
+.trend-up{color:#166634;font-weight:500}
+.trend-down{color:#991b1b;font-weight:500}
+.trend-same{color:#888}
+.empty{text-align:center;padding:48px;color:#bbb;font-size:13px}
+.detail{background:#fff;border:1px solid #e8e8e8;border-radius:12px;margin-bottom:20px;display:none}
+.detail.open{display:block}
+.detail-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #f0f0f0}
+.detail-head h2{font-size:15px;font-weight:500}
+.detail-tabs{display:flex;gap:2px;padding:0 18px;border-bottom:1px solid #f0f0f0}
+.dtab{font-size:13px;padding:8px 14px;border:none;background:none;color:#888;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.dtab.on{color:#1a1a18;border-bottom-color:#1a1a18;font-weight:500}
+.dpanel{padding:18px;display:none}
+.dpanel.on{display:block}
+.timeline{display:flex;flex-direction:column;gap:0}
+.tl-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.tl-row:last-child{border-bottom:none}
+.tl-date{width:90px;color:#aaa;flex-shrink:0;font-size:12px;padding-top:2px}
+.tl-body{display:flex;flex-direction:column;gap:4px;flex:1}
+.tl-intv{font-size:12px;background:#f0eeff;color:#4c1d95;border-radius:6px;padding:3px 9px;display:inline-block;margin-top:3px}
+.cards{display:flex;flex-direction:column;gap:12px}
+.card{border:1px solid #e8e8e8;border-radius:10px;overflow:hidden}
+.card.needs-update{border-color:#f59e0b;border-width:2px}
+.card-banner{background:#fff8e1;border-bottom:1px solid #fde68a;padding:8px 14px;font-size:12px;color:#92400e;font-weight:500;display:flex;align-items:center;gap:6px}
+.card-inner{padding:14px 16px}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.card-week{font-size:12px;color:#aaa}
+.card-actions{display:flex;gap:6px}
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cf{display:flex;flex-direction:column;gap:3px}
+.cf.full{grid-column:1/-1}
+.cf label{font-size:11px;font-weight:500;color:#999}
+.cf input,.cf select,.cf textarea{font-size:13px;padding:6px 10px;border:1px solid #e0e0e0;border-radius:7px;background:#fff;color:#1a1a18;width:100%;font-family:inherit}
+.cf textarea{resize:vertical;min-height:56px}
+.cf input:disabled,.cf select:disabled{background:#f9f9f9;color:#aaa;cursor:not-allowed}
+.loading{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99;display:flex;align-items:center;justify-content:center}
+.loading-box{background:#fff;border-radius:12px;padding:18px 28px;font-size:14px;display:flex;align-items:center;gap:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{width:16px;height:16px;border:2px solid #eee;border-top-color:#1a1a18;border-radius:50%;animation:spin .7s linear infinite}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div>
+      <h1>Quality intervention tracker</h1>
+      <div class="sub" id="uploadMeta">Upload your weekly SF report to get started</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:13px;padding:6px 14px;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        ↑ Upload weekly report (.csv)
+        <input type="file" accept=".csv" style="display:none" onchange="handleCSV(event)">
+      </label>
+    </div>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="srch" placeholder="Search account…" oninput="renderTable()">
+    <select id="fSent" onchange="renderTable()">
+      <option value="">All sentiment</option>
+      <option>Great</option><option>Good</option><option>Just OK</option>
+      <option>Not great</option><option>Worried</option><option>Unhappy</option>
+      <option>In Activation</option><option>Churned</option>
+    </select>
+    <select id="fNeedsUpdate" onchange="renderTable()">
+      <option value="">All accounts</option>
+      <option value="yes">Needs update this week</option>
+      <option value="no">Up to date</option>
+      <option value="nocard">No card yet</option>
+    </select>
+    <select id="fStatus" onchange="renderTable()">
+      <option value="">All card status</option>
+      <option>Working — continue</option>
+      <option>Resolved</option>
+      <option>Replaced by new strategy</option>
+    </select>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:180px" onclick="sortBy('name')">Account <span id="s_name"></span></th>
+        <th style="width:130px" onclick="sortBy('sent')">Current sentiment <span id="s_sent"></span></th>
+        <th style="width:80px" onclick="sortBy('trend')">Trend <span id="s_trend"></span></th>
+        <th style="width:90px">Cards</th>
+        <th style="width:130px">Latest strategy</th>
+        <th style="width:90px">Owner</th>
+        <th style="width:110px">Latest status</th>
+        <th style="width:90px">Last upload</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty" class="empty">Upload a CSV to load accounts.</div>
+  </div>
+
+  <div class="detail" id="detail">
+    <div class="detail-head">
+      <h2 id="detailName"></h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="downloadExcel()" style="font-size:12px">↓ Download timeline</button>
+        <button onclick="closeDetail()">✕</button>
+      </div>
+    </div>
+    <div class="detail-tabs">
+      <button class="dtab on" onclick="switchTab('timeline',this)">Sentiment timeline</button>
+      <button class="dtab" onclick="switchTab('cards',this)">Strategy cards</button>
+    </div>
+    <div class="dpanel on" id="pTimeline"></div>
+    <div class="dpanel" id="pCards"></div>
+  </div>
+</div>
+
+<div class="loading" id="loading" style="display:none">
+  <div class="loading-box"><div class="spin"></div> <span id="loadingMsg">Saving…</span></div>
+</div>
+
+<script>
+const PAT  = 'patnzaziH8Cvl8UdH.1111db3d7dd917afa69af8e592ba365d0f0c7f43ab72ad779a834834dddb258a';
+const BASE = 'appDWo46fkMXAxbwy';
+const AT   = `https://api.airtable.com/v0/${BASE}`;
+const H    = {'Authorization':`Bearer ${PAT}`,'Content-Type':'application/json'};
+
+let accounts=[], cards=[], sentLog=[];
+let sortCol='sent', sortDir=1, activeAccount=null, activeTab='timeline';
+
+const SENT_ORDER={'Unhappy':0,'Worried':1,'Not great':2,'Just OK':3,'Good':4,'Great':5,'In Activation':6,'Churned':7,'':8};
+
+// ── Airtable ──────────────────────────────────────────────────────────────────
+async function atGet(table){
+  let recs=[],offset;
+  do{
+    const r=await fetch(`${AT}/${encodeURIComponent(table)}${offset?'?offset='+offset:''}`,{headers:H});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    recs.push(...(d.records||[]));
+    offset=d.offset;
+  }while(offset);
+  return recs;
+}
+async function atCreate(table,fields){
+  const r=await fetch(`${AT}/${encodeURIComponent(table)}`,{method:'POST',headers:H,body:JSON.stringify({fields})});
+  return r.json();
+}
+async function atPatch(table,id,fields){
+  const r=await fetch(`${AT}/${encodeURIComponent(table)}/${id}`,{method:'PATCH',headers:H,body:JSON.stringify({fields})});
+  return r.json();
+}
+async function atDelete(table,id){
+  await fetch(`${AT}/${encodeURIComponent(table)}/${id}`,{method:'DELETE',headers:H});
+}
+
+// ── load ──────────────────────────────────────────────────────────────────────
+async function loadAll(){
+  showLoading(true,'Loading…');
+  try{
+    const [ar,cr,sr]=await Promise.all([atGet('Accounts'),atGet('StrategyCards'),atGet('SentimentLog')]);
+    accounts=ar.filter(r=>r.fields['Account Name']).map(r=>({
+      id:r.id,
+      name:r.fields['Account Name']||'',
+      sentiment:r.fields['Current Sentiment']||'',
+      prevSentiment:r.fields['Previous Sentiment']||'',
+      trend:r.fields['Sentiment Trend']||'',
+      lastUpdated:r.fields['Last Upload Date']||''
+    }));
+    cards=cr.filter(r=>r.fields['Account Name']).map(r=>({
+      id:r.id,
+      accountName:r.fields['Account Name']||'',
+      weekDate:r.fields['Week Date']||'',
+      weekNum:r.fields['Week Number']||'',
+      sentiment:r.fields['Client Sentiment']||'',
+      satisfaction:r.fields['Client Satisfaction']||'',
+      issueType:r.fields['Issue Type']||'',
+      rootCause:r.fields['Root Cause']||'',
+      intervention:r.fields['Intervention Strategy']||'',
+      dateImpl:r.fields['Date Implemented']||'',
+      owner:r.fields['Owner']||'',
+      internalObs:r.fields['Internal Observations']||'',
+      recurrence:r.fields['Recurrence']||'',
+      notes:r.fields['Notes']||'',
+      resolved:r.fields['Resolved']||'',
+      status:r.fields['Status']||'',
+      autoCreated:r.fields['Auto Created']||false
+    })).sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+    sentLog=sr.filter(r=>r.fields['Account Name']).map(r=>({
+      id:r.id,
+      accountName:r.fields['Account Name']||'',
+      date:r.fields['Date']||'',
+      sentiment:r.fields['Sentiment']||'',
+      weekNum:r.fields['Week Number']||''
+    })).sort((a,b)=>a.date.localeCompare(b.date));
+  }catch(e){alert('Error loading: '+e.message);}
+  showLoading(false);
+  renderTable();
+}
+
+// ── CSV upload ────────────────────────────────────────────────────────────────
+function handleCSV(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  e.target.value='';
+  const reader=new FileReader();
+  reader.onload=ev=>processCSV(ev.target.result);
+  reader.readAsText(file);
+}
+
+async function processCSV(text){
+  showLoading(true,'Processing report…');
+  const lines=text.trim().split('\n');
+  if(lines.length<2){showLoading(false);alert('File appears empty.');return;}
+
+  const headers=parseRow(lines[0]).map(h=>h.trim().toLowerCase());
+  let colName=-1,colSent=-1;
+  headers.forEach((h,i)=>{
+    if(h.includes('account name')||h==='account')colName=i;
+    if(h.includes('sentiment')||h.includes('how do you feel'))colSent=i;
+  });
+  if(colName<0)colName=1;
+  if(colSent<0)colSent=6;
+
+  const today=new Date().toISOString().split('T')[0];
+  const weekNum=getWeekNum(today);
+  const parsed=[];
+
+  for(let i=1;i<lines.length;i++){
+    if(!lines[i].trim())continue;
+    const cols=parseRow(lines[i]);
+    const name=(cols[colName]||'').trim();
+    if(!name||name.toLowerCase()==='account name')continue;
+    const sentRaw=(cols[colSent]||'').trim();
+    const sent=normSent(sentRaw);
+    parsed.push({name,sent});
+  }
+
+  // upsert accounts + log sentiment + auto-create weekly cards
+  for(const p of parsed){
+    const existing=accounts.find(a=>a.name.toLowerCase()===p.name.toLowerCase());
+    if(existing){
+      const prev=existing.sentiment;
+      const trend=calcTrend(prev,p.sent);
+      await atPatch('Accounts',existing.id,{
+        'Current Sentiment':p.sent,
+        'Previous Sentiment':prev,
+        'Sentiment Trend':trend,
+        'Last Upload Date':today
+      });
+      existing.prevSentiment=prev;
+      existing.sentiment=p.sent;
+      existing.trend=trend;
+      existing.lastUpdated=today;
+
+      // log sentiment if not already done today
+      const alreadyLogged=sentLog.find(s=>s.accountName.toLowerCase()===p.name.toLowerCase()&&s.date===today);
+      if(!alreadyLogged){
+        const res=await atCreate('SentimentLog',{'Account Name':p.name,'Date':today,'Sentiment':p.sent,'Week Number':`W${weekNum}`});
+        sentLog.push({id:res.id,accountName:p.name,date:today,sentiment:p.sent,weekNum:`W${weekNum}`});
+      }
+
+      // auto-create a weekly strategy card if this account already has cards
+      const acCards=cards.filter(c=>c.accountName.toLowerCase()===p.name.toLowerCase());
+      const alreadyHasCardThisWeek=acCards.find(c=>c.weekDate===today);
+      if(acCards.length>0&&!alreadyHasCardThisWeek){
+        const res=await atCreate('StrategyCards',{
+          'Account Name':p.name,
+          'Week Date':today,
+          'Week Number':`W${weekNum}`,
+          'Client Sentiment':p.sent,
+          'Auto Created':true
+        });
+        cards.push({id:res.id,accountName:p.name,weekDate:today,weekNum:`W${weekNum}`,sentiment:p.sent,satisfaction:'',issueType:'',rootCause:'',intervention:'',dateImpl:'',owner:'',internalObs:'',recurrence:'',notes:'',resolved:'',status:'',autoCreated:true});
+      }
+    }else{
+      // new account
+      const res=await atCreate('Accounts',{
+        'Account Name':p.name,
+        'Current Sentiment':p.sent,
+        'Previous Sentiment':'',
+        'Sentiment Trend':'—',
+        'Last Upload Date':today
+      });
+      accounts.push({id:res.id,name:p.name,sentiment:p.sent,prevSentiment:'',trend:'—',lastUpdated:today});
+      const sres=await atCreate('SentimentLog',{'Account Name':p.name,'Date':today,'Sentiment':p.sent,'Week Number':`W${weekNum}`});
+      sentLog.push({id:sres.id,accountName:p.name,date:today,sentiment:p.sent,weekNum:`W${weekNum}`});
+    }
+  }
+
+  document.getElementById('uploadMeta').textContent=`${parsed.length} accounts · uploaded ${today}`;
+  showLoading(false);
+  renderTable();
+  if(activeAccount)renderCards();
+}
+
+function parseRow(line){
+  const cols=[];let cur='';let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur.replace(/^"|"$/g,'').trim());cur='';}else cur+=c;
+  }
+  cols.push(cur.replace(/^"|"$/g,'').trim());
+  return cols;
+}
+
+function normSent(raw){
+  const r=raw.toLowerCase();
+  if(r.includes('great')&&r.includes('happy'))return'Great';
+  if(r.includes('good')&&r.includes('generally'))return'Good';
+  if(r.includes('just ok')||r.includes('just okay')||r.includes('working through some'))return'Just OK';
+  if(r.includes('not great')||r.includes('number of issues'))return'Not great';
+  if(r.includes('worried')||r.includes('continue to face'))return'Worried';
+  if(r.includes('unhappy')||r.includes('lost confidence'))return'Unhappy';
+  if(r.includes('activation'))return'In Activation';
+  if(r.includes('churn'))return'Churned';
+  return raw;
+}
+
+function calcTrend(prev,curr){
+  const p=SENT_ORDER[prev]??8,c=SENT_ORDER[curr]??8;
+  if(p===8||c===8)return'—';
+  if(c<p)return'↑ Improving';if(c>p)return'↓ Declining';return'→ Steady';
+}
+
+function getWeekNum(dateStr){
+  const d=new Date(dateStr),start=new Date(d.getFullYear(),0,1);
+  return Math.ceil(((d-start)/86400000+start.getDay()+1)/7);
+}
+
+// ── table ─────────────────────────────────────────────────────────────────────
+function sortBy(col){
+  if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}
+  document.querySelectorAll('th span[id^=s_]').forEach(el=>el.textContent='');
+  const el=document.getElementById('s_'+col);if(el)el.textContent=sortDir===1?' ↑':' ↓';
+  renderTable();
+}
+
+function sentBadge(s){
+  const cls={Great:'sg',Good:'sb','Just OK':'so','Not great':'sng',Worried:'sw',Unhappy:'su','In Activation':'sia',Churned:'sc'}[s]||'sc';
+  return s?`<span class="badge ${cls}">${s}</span>`:'<span style="color:#ccc">—</span>';
+}
+function trendHTML(t){
+  if(t==='↑ Improving')return`<span class="trend-up">↑</span>`;
+  if(t==='↓ Declining')return`<span class="trend-down">↓</span>`;
+  if(t==='→ Steady')return`<span class="trend-same">→</span>`;
+  return`<span style="color:#ddd">—</span>`;
+}
+
+function accountNeedsUpdate(name){
+  const ac=cards.filter(c=>c.accountName.toLowerCase()===name.toLowerCase());
+  return ac.some(c=>c.autoCreated&&!c.status);
+}
+
+function renderTable(){
+  const srch=(document.getElementById('srch').value||'').toLowerCase();
+  const fSent=document.getElementById('fSent').value;
+  const fNeeds=document.getElementById('fNeedsUpdate').value;
+  const fStat=document.getElementById('fStatus').value;
+
+  let rows=[...accounts].filter(a=>{
+    if(srch&&!a.name.toLowerCase().includes(srch))return false;
+    if(fSent&&a.sentiment!==fSent)return false;
+    const ac=cards.filter(c=>c.accountName.toLowerCase()===a.name.toLowerCase());
+    const needsUpdate=accountNeedsUpdate(a.name);
+    if(fNeeds==='yes'&&!needsUpdate)return false;
+    if(fNeeds==='no'&&(needsUpdate||ac.length===0))return false;
+    if(fNeeds==='nocard'&&ac.length>0)return false;
+    if(fStat&&!ac.find(c=>c.status===fStat))return false;
+    return true;
+  });
+
+  rows.sort((a,b)=>{
+    let va,vb;
+    if(sortCol==='sent'){va=SENT_ORDER[a.sentiment]??8;vb=SENT_ORDER[b.sentiment]??8;return(va-vb)*sortDir;}
+    va=a.name;vb=b.name;
+    return va<vb?-sortDir:va>vb?sortDir:0;
+  });
+
+  const tbody=document.getElementById('tbody');
+  const empty=document.getElementById('empty');
+  if(!rows.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+
+  tbody.innerHTML=rows.map(a=>{
+    const ac=cards.filter(c=>c.accountName.toLowerCase()===a.name.toLowerCase());
+    const sorted=ac.sort((x,y)=>y.weekDate.localeCompare(x.weekDate));
+    const latest=sorted[0];
+    const needsUpdate=accountNeedsUpdate(a.name);
+    const statusBadge=needsUpdate
+      ?`<span class="badge snew">⚠ Needs update</span>`
+      :latest?.status?`<span class="badge ${latest.status==='Resolved'?'sb':latest.status==='Working — continue'?'sg':'so'}" style="font-size:10px">${latest.status}</span>`
+      :'<span style="color:#ccc">—</span>';
+    return`<tr class="row" onclick="openDetail('${a.name.replace(/'/g,"\\'").replace(/"/g,"&quot;")}')" style="${needsUpdate?'background:#fffdf5':''}">
+      <td style="font-weight:500" title="${a.name}">${a.name}${needsUpdate?'<span style="color:#e65100;margin-left:6px;font-size:11px">●</span>':''}</td>
+      <td>${sentBadge(a.sentiment)}</td>
+      <td>${trendHTML(a.trend)}</td>
+      <td style="color:#888">${ac.length} card${ac.length!==1?'s':''}</td>
+      <td title="${latest?.intervention||''}" style="color:#666">${latest?.intervention?latest.intervention.slice(0,30)+(latest.intervention.length>30?'…':''):'—'}</td>
+      <td style="color:#888">${latest?.owner||'—'}</td>
+      <td>${statusBadge}</td>
+      <td style="color:#aaa;font-size:12px">${a.lastUpdated||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── detail ────────────────────────────────────────────────────────────────────
+function openDetail(name){
+  activeAccount=name;
+  document.getElementById('detailName').textContent=name;
+  document.getElementById('detail').classList.add('open');
+  document.getElementById('detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+  renderTimeline();
+  renderCards();
+}
+function closeDetail(){document.getElementById('detail').classList.remove('open');activeAccount=null;}
+function switchTab(tab,el){
+  activeTab=tab;
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('on'));
+  if(el)el.classList.add('on');
+  document.querySelectorAll('.dpanel').forEach(p=>p.classList.remove('on'));
+  document.getElementById(tab==='timeline'?'pTimeline':'pCards').classList.add('on');
+}
+
+function renderTimeline(){
+  const logs=sentLog.filter(s=>s.accountName.toLowerCase()===activeAccount.toLowerCase())
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  const acCards=cards.filter(c=>c.accountName.toLowerCase()===activeAccount.toLowerCase());
+
+  if(!logs.length){
+    document.getElementById('pTimeline').innerHTML='<div style="color:#bbb;padding:20px;font-size:13px">No sentiment data yet.</div>';
+    return;
+  }
+
+  const rows=logs.map((log,i)=>{
+    const prev=logs[i-1];
+    const trend=prev?calcTrend(prev.sentiment,log.sentiment):'';
+    const trendHtml=trend==='↑ Improving'?`<span class="trend-up">↑ improving</span>`:trend==='↓ Declining'?`<span class="trend-down">↓ declining</span>`:trend==='→ Steady'?`<span class="trend-same">→ steady</span>`:'';
+    const card=acCards.find(c=>c.weekDate===log.date);
+    const intvHtml=card?.intervention?`<span class="tl-intv">Strategy: ${card.intervention.slice(0,50)}${card.intervention.length>50?'…':''}</span>`:'';
+    const statusHtml=card?.status?`<span class="badge ${card.status==='Resolved'?'sb':card.status==='Working — continue'?'sg':'so'}" style="font-size:10px;margin-left:4px">${card.status}</span>`:'';
+    return`<div class="tl-row">
+      <span class="tl-date">${log.date}<br><span style="font-size:11px">${log.weekNum}</span></span>
+      <div class="tl-body">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${sentBadge(log.sentiment)} ${trendHtml} ${statusHtml}</div>
+        ${intvHtml}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('pTimeline').innerHTML=`<div class="timeline">${rows}</div>`;
+}
+
+function renderCards(){
+  const acCards=cards.filter(c=>c.accountName.toLowerCase()===activeAccount.toLowerCase())
+    .sort((a,b)=>b.weekDate.localeCompare(a.weekDate));
+
+  const addBtn=`<div style="margin-bottom:14px"><button class="btn-dark" onclick="addCard()">+ Add strategy card</button></div>`;
+
+  if(!acCards.length){
+    document.getElementById('pCards').innerHTML=addBtn+'<div style="color:#bbb;font-size:13px">No strategy cards yet. Upload a report and click an account to start tracking.</div>';
+    return;
+  }
+
+  const html=acCards.map((c,idx)=>{
+    const isNew=c.autoCreated&&!c.status;
+    const prevCard=acCards[idx+1];
+    return`<div class="card${isNew?' needs-update':''}" id="card_${c.id}">
+      ${isNew?`<div class="card-banner" style="display:flex;justify-content:space-between;align-items:center">
+        <span>⚠ New week — sentiment auto-populated from upload</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="continueStrategy('${c.id}')" style="font-size:12px;background:#1a1a18;color:#fff;border-color:#1a1a18;padding:4px 12px">✓ Continue strategy</button>
+          <button onclick="replaceStrategy('${c.id}')" style="font-size:12px;color:#9a3412;border-color:#fca5a5;padding:4px 12px">↺ New strategy</button>
+        </div>
+      </div>`:''}
+      <div class="card-inner">
+        <div class="card-head">
+          <div>
+            <div style="font-weight:500;font-size:13px">${c.weekDate} <span style="color:#aaa;font-weight:normal">${c.weekNum}</span></div>
+          </div>
+          <div class="card-actions">
+            <button onclick="editCard('${c.id}')" style="font-size:12px">Edit</button>
+            <button class="btn-red" onclick="deleteCard('${c.id}')" style="font-size:12px">Delete</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+          <div><span style="color:#aaa">Sentiment: </span>${sentBadge(c.sentiment)}</div>
+          <div><span style="color:#aaa">Satisfaction: </span>${c.satisfaction||'<span style="color:#ccc">—</span>'}</div>
+          ${c.status?`<div><span style="color:#aaa">Status: </span><span class="badge ${c.status==='Resolved'?'sb':c.status==='Working — continue'?'sg':'so'}" style="font-size:11px">${c.status}</span></div>`:'<div><span style="color:#aaa">Status: </span><span style="color:#e65100">Not set</span></div>'}
+          <div><span style="color:#aaa">Owner: </span>${c.owner||'<span style="color:#ccc">—</span>'}</div>
+          ${c.issueType?`<div style="grid-column:1/-1"><span style="color:#aaa">Issue type: </span>${c.issueType}</div>`:''}
+          ${c.rootCause?`<div style="grid-column:1/-1"><span style="color:#aaa">Root cause: </span>${c.rootCause}</div>`:''}
+          ${c.intervention?`<div style="grid-column:1/-1"><span style="color:#aaa">Intervention: </span>${c.intervention}</div>`:''}
+          ${c.dateImpl?`<div><span style="color:#aaa">Date implemented: </span>${c.dateImpl}</div>`:''}
+          ${c.internalObs?`<div style="grid-column:1/-1"><span style="color:#aaa">Observations: </span>${c.internalObs}</div>`:''}
+          ${c.recurrence?`<div><span style="color:#aaa">Recurrence: </span>${c.recurrence}</div>`:''}
+          ${c.resolved?`<div><span style="color:#aaa">Resolved: </span>${c.resolved}</div>`:''}
+          ${c.notes?`<div style="grid-column:1/-1"><span style="color:#aaa">Notes: </span>${c.notes}</div>`:''}
+        </div>
+        ${prevCard?`<div style="font-size:11px;color:#aaa;margin-top:8px;padding-top:8px;border-top:1px solid #f5f5f5">Previous week (${prevCard.weekDate}): ${sentBadge(prevCard.sentiment)} ${prevCard.status?'· '+prevCard.status:''}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('pCards').innerHTML=addBtn+`<div class="cards">${html}</div>`;
+}
+
+// ── card form ─────────────────────────────────────────────────────────────────
+function cardFormHTML(c){
+  const v=f=>c?c[f]||'':'';
+  const opt=(f,opts)=>opts.map(o=>`<option${v(f)===o?' selected':''}>${o}</option>`).join('');
+  return`<div class="card-grid">
+    <div class="cf"><label>Client sentiment (from report)</label><input value="${v('sentiment')}" disabled></div>
+    <div class="cf"><label>Client satisfaction</label><select id="fc_satisfaction"><option value="">Select…</option>${opt('satisfaction',['Very satisfied','Fairly satisfied','Neutral','Dissatisfied','Very dissatisfied'])}</select></div>
+    <div class="cf full"><label>Issue type / description</label><textarea id="fc_issueType">${v('issueType')}</textarea></div>
+    <div class="cf full"><label>Root cause</label><textarea id="fc_rootCause">${v('rootCause')}</textarea></div>
+    <div class="cf full"><label>Intervention strategy</label><textarea id="fc_intervention">${v('intervention')}</textarea></div>
+    <div class="cf"><label>Date implemented</label><input type="date" id="fc_dateImpl" value="${v('dateImpl')}"></div>
+    <div class="cf"><label>Owner</label><input id="fc_owner" value="${v('owner')}" placeholder="Name or team"></div>
+    <div class="cf"><label>Status</label><select id="fc_status"><option value="">Select…</option>${opt('status',['Working — continue','Resolved','Replaced by new strategy'])}</select></div>
+    <div class="cf"><label>Recurrence</label><select id="fc_recurrence"><option value="">Select…</option>${opt('recurrence',['No','Yes — minor','Yes — major'])}</select></div>
+    <div class="cf full"><label>Internal quality observations</label><textarea id="fc_internalObs">${v('internalObs')}</textarea></div>
+    <div class="cf"><label>Resolved?</label><select id="fc_resolved"><option value="">Select…</option>${opt('resolved',['Yes','No'])}</select></div>
+    <div class="cf full"><label>Notes</label><textarea id="fc_notes">${v('notes')}</textarea></div>
+  </div>`;
+}
+
+function collectCard(){
+  return{
+    satisfaction:document.getElementById('fc_satisfaction').value,
+    issueType:document.getElementById('fc_issueType').value,
+    rootCause:document.getElementById('fc_rootCause').value,
+    intervention:document.getElementById('fc_intervention').value,
+    dateImpl:document.getElementById('fc_dateImpl').value,
+    owner:document.getElementById('fc_owner').value,
+    status:document.getElementById('fc_status').value,
+    recurrence:document.getElementById('fc_recurrence').value,
+    internalObs:document.getElementById('fc_internalObs').value,
+    resolved:document.getElementById('fc_resolved').value,
+    notes:document.getElementById('fc_notes').value,
+  };
+}
+
+function addCard(){
+  const panel=document.getElementById('pCards');
+  const existing=document.getElementById('newCardForm');
+  if(existing)existing.remove();
+  const today=new Date().toISOString().split('T')[0];
+  const acct=accounts.find(a=>a.name.toLowerCase()===activeAccount.toLowerCase());
+  const div=document.createElement('div');
+  div.className='card';div.id='newCardForm';
+  div.innerHTML=`<div class="card-inner"><div class="card-head"><div style="font-weight:500">New card · ${today}</div></div>
+    ${cardFormHTML({sentiment:acct?.sentiment||''})}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn-dark" onclick="saveNewCard()">Save card</button>
+      <button onclick="document.getElementById('newCardForm').remove()">Cancel</button>
+    </div></div>`;
+  panel.insertBefore(div,panel.firstChild);
+  div.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function saveNewCard(){
+  const data=collectCard();
+  const today=new Date().toISOString().split('T')[0];
+  const weekNum=getWeekNum(today);
+  const acct=accounts.find(a=>a.name.toLowerCase()===activeAccount.toLowerCase());
+  showLoading(true,'Saving…');
+  try{
+    const fields={'Account Name':activeAccount,'Week Date':today,'Week Number':`W${weekNum}`,'Client Sentiment':acct?.sentiment||''};
+    if(data.satisfaction)fields['Client Satisfaction']=data.satisfaction;
+    if(data.issueType)fields['Issue Type']=data.issueType;
+    if(data.rootCause)fields['Root Cause']=data.rootCause;
+    if(data.intervention)fields['Intervention Strategy']=data.intervention;
+    if(data.dateImpl)fields['Date Implemented']=data.dateImpl;
+    if(data.owner)fields['Owner']=data.owner;
+    if(data.status)fields['Status']=data.status;
+    if(data.recurrence)fields['Recurrence']=data.recurrence;
+    if(data.internalObs)fields['Internal Observations']=data.internalObs;
+    if(data.resolved)fields['Resolved']=data.resolved;
+    if(data.notes)fields['Notes']=data.notes;
+    const res=await atCreate('StrategyCards',fields);
+    cards.push({id:res.id,accountName:activeAccount,weekDate:today,weekNum:`W${weekNum}`,sentiment:acct?.sentiment||'',...data,autoCreated:false});
+    document.getElementById('newCardForm')?.remove();
+    renderCards();renderTimeline();renderTable();
+  }catch(e){alert('Error saving: '+e.message);}
+  showLoading(false);
+}
+
+function editCard(id){
+  const c=cards.find(x=>x.id===id);if(!c)return;
+  const div=document.getElementById('card_'+id);
+  div.innerHTML=`<div class="card-inner"><div class="card-head"><div style="font-weight:500">Edit · ${c.weekDate} ${c.weekNum}</div></div>
+    ${cardFormHTML(c)}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn-dark" onclick="saveEditCard('${id}')">Save</button>
+      <button onclick="renderCards()">Cancel</button>
+    </div></div>`;
+}
+
+async function saveEditCard(id){
+  const data=collectCard();
+  showLoading(true,'Saving…');
+  try{
+    const fields={};
+    if(data.satisfaction)fields['Client Satisfaction']=data.satisfaction;
+    if(data.issueType)fields['Issue Type']=data.issueType;
+    if(data.rootCause)fields['Root Cause']=data.rootCause;
+    if(data.intervention)fields['Intervention Strategy']=data.intervention;
+    if(data.dateImpl)fields['Date Implemented']=data.dateImpl;
+    if(data.owner)fields['Owner']=data.owner;
+    if(data.status)fields['Status']=data.status;else fields['Status']='';
+    if(data.recurrence)fields['Recurrence']=data.recurrence;
+    if(data.internalObs)fields['Internal Observations']=data.internalObs;
+    if(data.resolved)fields['Resolved']=data.resolved;
+    if(data.notes)fields['Notes']=data.notes;
+    // mark as no longer auto-created
+    fields['Auto Created']=false;
+    await atPatch('StrategyCards',id,fields);
+    const idx=cards.findIndex(c=>c.id===id);
+    if(idx>=0)cards[idx]={...cards[idx],...data,autoCreated:false};
+    renderCards();renderTimeline();renderTable();
+  }catch(e){alert('Error saving: '+e.message);}
+  showLoading(false);
+}
+
+async function deleteCard(id){
+  if(!confirm('Delete this card?'))return;
+  showLoading(true,'Deleting…');
+  try{
+    await atDelete('StrategyCards',id);
+    cards=cards.filter(c=>c.id!==id);
+    renderCards();renderTimeline();renderTable();
+  }catch(e){alert('Error deleting: '+e.message);}
+  showLoading(false);
+}
+
+// ── quick actions ────────────────────────────────────────────────────────────
+async function continueStrategy(id){
+  const c=cards.find(x=>x.id===id);if(!c)return;
+  // find previous card to copy strategy from
+  const acCards=cards.filter(x=>x.accountName.toLowerCase()===activeAccount.toLowerCase())
+    .sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+  const idx=acCards.findIndex(x=>x.id===id);
+  const prev=acCards[idx-1];
+  showLoading(true,'Marking as continue…');
+  try{
+    const fields={
+      'Status':'Working — continue',
+      'Auto Created':false,
+      'Intervention Strategy':prev?.intervention||c.intervention||'',
+      'Issue Type':prev?.issueType||c.issueType||'',
+      'Root Cause':prev?.rootCause||c.rootCause||'',
+      'Owner':prev?.owner||c.owner||'',
+      'Client Satisfaction':prev?.satisfaction||c.satisfaction||'',
+    };
+    // only set non-empty
+    Object.keys(fields).forEach(k=>{if(fields[k]==='')delete fields[k];});
+    fields['Status']='Working — continue';
+    fields['Auto Created']=false;
+    await atPatch('StrategyCards',id,fields);
+    const cidx=cards.findIndex(x=>x.id===id);
+    if(cidx>=0)cards[cidx]={...cards[cidx],status:'Working — continue',autoCreated:false,
+      intervention:prev?.intervention||cards[cidx].intervention,
+      issueType:prev?.issueType||cards[cidx].issueType,
+      rootCause:prev?.rootCause||cards[cidx].rootCause,
+      owner:prev?.owner||cards[cidx].owner,
+      satisfaction:prev?.satisfaction||cards[cidx].satisfaction};
+    renderCards();renderTimeline();renderTable();
+  }catch(e){alert('Error: '+e.message);}
+  showLoading(false);
+}
+
+async function replaceStrategy(id){
+  const c=cards.find(x=>x.id===id);if(!c)return;
+  showLoading(true,'Creating new strategy card…');
+  try{
+    // 1. Lock the current card as "Replaced by new strategy"
+    await atPatch('StrategyCards',id,{'Status':'Replaced by new strategy','Auto Created':false});
+    const cidx=cards.findIndex(x=>x.id===id);
+    if(cidx>=0)cards[cidx]={...cards[cidx],status:'Replaced by new strategy',autoCreated:false};
+
+    // 2. Create a brand new blank card for the same week so user can enter new strategy
+    const weekNum=getWeekNum(c.weekDate);
+    const res=await atCreate('StrategyCards',{
+      'Account Name':c.accountName,
+      'Week Date':c.weekDate,
+      'Week Number':c.weekNum||`W${weekNum}`,
+      'Client Sentiment':c.sentiment,
+      'Auto Created':false,
+      'Status':''
+    });
+    const newCard={
+      id:res.id,
+      accountName:c.accountName,
+      weekDate:c.weekDate,
+      weekNum:c.weekNum||`W${weekNum}`,
+      sentiment:c.sentiment,
+      satisfaction:'',issueType:'',rootCause:'',intervention:'',
+      dateImpl:'',owner:'',internalObs:'',recurrence:'',
+      notes:'',resolved:'',status:'',autoCreated:false
+    };
+    cards.push(newCard);
+    renderCards();
+    renderTimeline();
+    renderTable();
+    // 3. Open edit form on the new card so user fills in the new strategy
+    setTimeout(()=>editCard(res.id),100);
+  }catch(e){alert('Error: '+e.message);}
+  showLoading(false);
+}
+
+// ── Excel export ──────────────────────────────────────────────────────────────
+function downloadExcel(){
+  if(!activeAccount)return;
+  const logs=sentLog.filter(s=>s.accountName.toLowerCase()===activeAccount.toLowerCase()).sort((a,b)=>a.date.localeCompare(b.date));
+  const acCards=cards.filter(c=>c.accountName.toLowerCase()===activeAccount.toLowerCase()).sort((a,b)=>a.weekDate.localeCompare(b.weekDate));
+
+  const rows=[['Date','Week','Sentiment','Trend','Satisfaction','Issue Type','Intervention Strategy','Date Implemented','Owner','Status','Internal Observations','Recurrence','Resolved','Notes']];
+  logs.forEach((log,i)=>{
+    const prev=logs[i-1];
+    const trend=prev?calcTrend(prev.sentiment,log.sentiment):'—';
+    // get ALL cards for this week (could be multiple if strategy was replaced)
+    const weekCards=acCards.filter(c=>c.weekDate===log.date);
+    if(!weekCards.length){
+      // no card this week — just log the sentiment
+      rows.push([log.date,log.weekNum,log.sentiment,trend,'','','','','','','','','','']);
+    } else {
+      weekCards.forEach((card,ci)=>{
+        rows.push([
+          log.date,
+          log.weekNum,
+          ci===0?log.sentiment:'',   // only show sentiment on first row for the week
+          ci===0?trend:'',
+          card.satisfaction||'',
+          card.issueType||'',
+          card.intervention||'',
+          card.dateImpl||'',
+          card.owner||'',
+          card.status||'',
+          card.internalObs||'',
+          card.recurrence||'',
+          card.resolved||'',
+          card.notes||''
+        ]);
+      });
+    }
+  });
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Timeline');
+  XLSX.writeFile(wb,`${activeAccount} — Quality Timeline.xlsx`);
+}
+
+function showLoading(v,msg){
+  document.getElementById('loading').style.display=v?'flex':'none';
+  if(msg)document.getElementById('loadingMsg').textContent=msg;
+}
+
+loadAll();
+</script>
+</body>
+</html>
